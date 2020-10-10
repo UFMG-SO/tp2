@@ -547,3 +547,16 @@ int set_prio(int prio) {
 
   return 0;
 }
+
+int wait2(int *retime, int *rutime, int *stime) {
+  int ret = wait();
+  struct proc *p = myproc();
+  if (ret == -1 || p == 0) {
+    return -1;
+  }
+
+  *retime = p->retime;
+  *rutime = p->rutime;
+  *stime = p->stime;
+  return 0;
+}
