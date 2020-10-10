@@ -199,6 +199,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->priority = 2;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -531,4 +532,16 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int set_prio(int prio) {
+  // Priorities are to be within [0-2]
+  if (prio < 0 || prio > 2) {
+    return -1;
+  }
+  acquire(&ptable.lock);
+  myproc()->priority = prio;
+  release(&ptable.lock);
+
+  return 0;
 }
