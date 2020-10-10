@@ -7,6 +7,8 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define STARTING_PRIORITY 2
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -111,6 +113,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  p->priority = STARTING_PRIORITY;
 
   return p;
 }
@@ -199,7 +202,6 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-  np->priority = 2;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
