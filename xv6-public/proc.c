@@ -9,6 +9,139 @@
 
 #define STARTING_PRIORITY 2
 
+// Implementação da fila
+struct Queue
+{
+	int front, rear, size;
+	struct proc* array[NPROC];
+};
+
+struct Queue create_queue()
+{
+	struct Queue queue;
+	queue.front = queue.size = 0;
+
+	queue.rear = NPROC - 1;
+	return queue;
+}
+
+int isFull(struct Queue *queue)
+{
+	return (queue->size == NPROC);
+}
+
+int queue_is_empty(struct Queue *queue)
+{
+	return (queue->size == 0);
+}
+
+void queue_add(struct Queue *queue, struct proc* item)
+{
+	if (isFull(queue))
+		return;
+	queue->rear = (queue->rear + 1) % NPROC;
+	queue->array[queue->rear] = item;
+	queue->size = queue->size + 1;
+}
+
+void queue_remove(struct Queue *queue, struct proc* item) {
+	if (queue_is_empty(queue)) {
+		return;
+	}
+	if (queue->size == 1) {
+		return;
+	}
+	struct Queue new_queue = create_queue();
+	int i;
+	for (i = queue->front; i < queue->size; i++) {
+		if (queue->array[i]) {
+			if (queue->array[i]->pid != item->pid) {
+				queue_add(&new_queue,queue->array[i]);
+			}
+		}
+	}
+	*queue = new_queue;
+}
+
+struct proc* dequeue(struct Queue *queue)
+{
+	if (queue_is_empty(queue))
+		return 0;
+	struct proc* item = queue->array[queue->front];
+	queue->front = (queue->front + 1) % NPROC;
+	queue->size = queue->size - 1;
+	return item;
+}
+
+struct proc* front(struct Queue *queue)
+{
+	if (queue_is_empty(queue))
+		return 0;
+	return queue->array[queue->front];
+}
+
+struct proc* rear(struct Queue *queue)
+{
+	if (queue_is_empty(queue))
+		return 0;
+	return queue->array[queue->rear];
+}
+
+struct proc* get_first_element(struct Queue *queue) {
+	int i;
+	for (i = queue->front; i < queue->size; i++) {
+		if (queue->array[i]) {
+			if (queue->array[i]->state == RUNNABLE) {
+				return queue->array[i];
+			}
+		}
+	}
+	return 0;
+}
+
+int move_end(struct Queue* queue, struct proc* item) {
+	struct Queue new_queue = create_queue();
+	if (queue_is_empty(queue)) {
+		return 0;
+	}
+	if (queue->size == 1) {
+		return 1;
+	}
+	int i;
+	for (i = queue->front; i < queue->size; i++) {
+		if (queue->array[i]) {
+			if (queue->array[i]->pid != item->pid) {
+				queue_add(&new_queue,queue->array[i]);
+			}
+		}
+	}
+	queue_add(&new_queue,item);
+	*queue = new_queue;
+	return 1;
+}
+
+void print_queue(struct Queue *queue) {
+	int i = 0;
+	for (i = queue->front; i < queue->size; i++) {
+		if (queue->array[i]) {
+			cprintf("%d ",queue->array[i]->pid);
+		}
+	}
+	cprintf("\n");
+}
+//
+
+// As 3 filas de prioridade necessarias
+struct Queue queue0;
+struct Queue queue1;
+struct Queue queue2;
+
+void init_queues(void) {
+	queue0 = create_queue();
+	queue1 = create_queue();
+	queue2 = create_queue();
+}
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -26,6 +159,7 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  init_queues();
 }
 
 // Must be called with interrupts disabled
@@ -40,10 +174,10 @@ struct cpu*
 mycpu(void)
 {
   int apicid, i;
-  
+
   if(readeflags()&FL_IF)
     panic("mycpu called with interrupts enabled\n");
-  
+
   apicid = lapicid();
   // APIC IDs are not guaranteed to be contiguous. Maybe we should have
   // a reverse map, or reserve a register to store &cpus[i].
@@ -114,7 +248,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
   p->priority = STARTING_PRIORITY;
-
+  queue_add(&queue2, p);
   return p;
 }
 
@@ -127,7 +261,6 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -278,7 +411,6 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -322,40 +454,64 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void
-scheduler(void)
+void scheduler(void)
 {
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-  
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
+	struct proc *p;
+	struct cpu *c = mycpu();
+	c->proc = 0;
 
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+	for(;;) {
+		// Enable interrupts on this processor.
+		sti();
+		// Loop over process table looking for process to run.
+		acquire(&ptable.lock);
+		p = 0;
+		// Tenta encontrar um processo olhando nas filas 2 -> 1 -> 0
+		if (!queue_is_empty(&queue2)) {
+			cprintf("22\n");
+			p = get_first_element(&queue2);
+			move_end(&queue2, p);
+		} else {
+			if (!queue_is_empty(&queue1)) {
+				cprintf("11\n");
+				p = get_first_element(&queue1);
+				move_end(&queue1, p);
+			} else {
+				if (!queue_is_empty(&queue0)) {
+					cprintf("00\n");
+					p = get_first_element(&queue0);
+					move_end(&queue0, p);
+				}
+			}
+		}
+		if (p != 0) {
+			// debug xd
+			cprintf(">>PID %d <<\n", p->pid);
+			cprintf("queue2: ");
+			print_queue(&queue2);
+			cprintf("\nqueue1: ");
+			print_queue(&queue1);
+			cprintf("\nqueue0: ");
+			print_queue(&queue0);
+			cprintf("\n\n");
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+			// debug xd
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+			// Switch to chosen process.  It is the process's job
+			// to release ptable.lock and then reacquire it
+			// before jumping back to us.
+			c->proc = p;
+			switchuvm(p);
+			p->state = RUNNING;
+			swtch(&(c->scheduler), p->context);
+			switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
-    release(&ptable.lock);
-
-  }
+			// Process is done running for now.
+			// It should have changed its p->state before coming back.
+			c->proc = 0;
+		}
+		release(&ptable.lock);
+	}
 }
 
 // Enter scheduler.  Must hold only ptable.lock
@@ -421,7 +577,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
@@ -541,9 +697,28 @@ int set_prio(int prio) {
   if (prio < 0 || prio > 2) {
     return -1;
   }
+
+  int old_priority = myproc()->priority;
+
   acquire(&ptable.lock);
   myproc()->priority = prio;
   release(&ptable.lock);
+
+  if (prio == 2) {
+	queue_add(&queue2, myproc());
+  } else if (prio == 1) {
+	queue_add(&queue1, myproc());
+  } else {
+	queue_add(&queue0, myproc());
+  }
+
+  if (old_priority == 2) {
+	queue_remove(&queue2, myproc());
+  } else if (old_priority == 1) {
+	queue_remove(&queue1, myproc());
+  } else {
+	queue_remove(&queue0, myproc());
+  }
 
   return 0;
 }
