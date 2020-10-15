@@ -25,7 +25,7 @@ struct Queue create_queue()
 	return queue;
 }
 
-int isFull(struct Queue *queue)
+int is_full(struct Queue *queue)
 {
 	return (queue->size == NPROC);
 }
@@ -37,7 +37,7 @@ int queue_is_empty(struct Queue *queue)
 
 void queue_add(struct Queue *queue, struct proc* item)
 {
-	if (isFull(queue))
+	if (is_full(queue))
 		return;
 	queue->rear = (queue->rear + 1) % NPROC;
 	queue->array[queue->rear] = item;
@@ -46,9 +46,6 @@ void queue_add(struct Queue *queue, struct proc* item)
 
 void queue_remove(struct Queue *queue, struct proc* item) {
 	if (queue_is_empty(queue)) {
-		return;
-	}
-	if (queue->size == 1) {
 		return;
 	}
 	struct Queue new_queue = create_queue();
