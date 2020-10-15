@@ -99,25 +99,21 @@ struct proc* get_first_element(struct Queue *queue) {
 	return 0;
 }
 
-int move_end(struct Queue* queue, struct proc* item) {
+void move_end(struct Queue* queue, struct proc* item) {
 	struct Queue new_queue = create_queue();
-	if (queue_is_empty(queue)) {
-		return 0;
-	}
 	if (queue->size == 1) {
-		return 1;
+		return;
 	}
 	int i;
 	for (i = queue->front; i < queue->size; i++) {
 		if (queue->array[i]) {
-			if (queue->array[i]->pid != item->pid) {
+			if (queue->array[i]->pid != item->pid && queue->array[i]->state == RUNNABLE) {
 				queue_add(&new_queue,queue->array[i]);
 			}
 		}
 	}
-	queue_add(&new_queue,item);
+	queue_add(&new_queue, item);
 	*queue = new_queue;
-	return 1;
 }
 
 void print_queue(struct Queue *queue) {
@@ -468,35 +464,20 @@ void scheduler(void)
 		p = 0;
 		// Tenta encontrar um processo olhando nas filas 2 -> 1 -> 0
 		if (!queue_is_empty(&queue2)) {
-			cprintf("22\n");
 			p = get_first_element(&queue2);
 			move_end(&queue2, p);
 		} else {
 			if (!queue_is_empty(&queue1)) {
-				cprintf("11\n");
 				p = get_first_element(&queue1);
 				move_end(&queue1, p);
 			} else {
 				if (!queue_is_empty(&queue0)) {
-					cprintf("00\n");
 					p = get_first_element(&queue0);
 					move_end(&queue0, p);
 				}
 			}
 		}
 		if (p != 0) {
-			// debug xd
-			cprintf(">>PID %d <<\n", p->pid);
-			cprintf("queue2: ");
-			print_queue(&queue2);
-			cprintf("\nqueue1: ");
-			print_queue(&queue1);
-			cprintf("\nqueue0: ");
-			print_queue(&queue0);
-			cprintf("\n\n");
-
-			// debug xd
-
 			// Switch to chosen process.  It is the process's job
 			// to release ptable.lock and then reacquire it
 			// before jumping back to us.
