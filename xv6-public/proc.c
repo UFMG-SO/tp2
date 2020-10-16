@@ -40,7 +40,7 @@ int queue_is_empty(struct Queue *queue)
 
 void queue_add(struct Queue *queue, struct proc* item)
 {
-  cprintf("queue add\n");
+  // cprintf("queue add\n");
 	if (is_full(queue))
   {
 		return;
@@ -48,26 +48,32 @@ void queue_add(struct Queue *queue, struct proc* item)
   int index = queue->size;
   queue->array[index] = item;
   queue->size++;
-  cprintf("queue add end\n");
+  // cprintf("queue add end\n");
 }
 
 void queue_remove(struct Queue *queue, struct proc* item) {
+  // cprintf("Trying to remove %p\n", item);
+  if (item == 0) {
+    return;
+  }
 	if (queue_is_empty(queue)) {
-    cprintf("queue empty\n");
+    // cprintf("queue empty\n");
 		return;
 	}
 	int i = 0;
   int found = 0;
-	while (i < queue->size)
+	while (i < NPROC)
   {
-    if (queue->array[i] && queue->array[i]->pid != item->pid) {
+    if (queue->array[i] && queue->array[i]->pid == item->pid) {
+      cprintf("%p was found\n", item);
       found = 1;
       break;
     }
+    ++i;
 	}
 
   if (found) {
-    while (i < queue->size - 1) {
+    while (i < NPROC - 1) {
       queue->array[i] = queue->array[i + 1];
 
       i++;
@@ -81,6 +87,8 @@ struct proc* get_first_element(struct Queue *queue) {
 	int i;
 	for (i = 0; i < NPROC; i++) {
     if (queue->array[i] && queue->array[i]->state == RUNNABLE) {
+      //queue_remove(queue, queue->array[i]);
+      //queue_add(queue, queue->array[i]);
       return queue->array[i];
     }
 	}
@@ -96,7 +104,6 @@ void print_queue(struct Queue *queue) {
 	}
 	cprintf("\n");
 }
-//
 
 // As 3 filas de prioridade necessarias
 struct Queue queue0;
@@ -434,17 +441,23 @@ void scheduler(void)
 		acquire(&ptable.lock);
 		p = 0;
 		// Tenta encontrar um processo olhando nas filas 2 -> 1 -> 0
+    // cprintf("BEFORE:: Q0: %d, Q1: %d, Q2: %d\n", queue0.size, queue1.size, queue2.size);
 		if (!queue_is_empty(&queue2)) {
 			p = get_first_element(&queue2);
-		} else {
-			if (!queue_is_empty(&queue1)) {
+		}
+    if (p == 0) {
+      // no runnable process in q0. look in q1.
+      if (!queue_is_empty(&queue1)) {
 				p = get_first_element(&queue1);
-			} else {
+			}
+      if (p == 0) {
+        // no runnable process in q1. look in q2.
 				if (!queue_is_empty(&queue0)) {
 					p = get_first_element(&queue0);
 				}
 			}
-		}
+    }
+    // cprintf("AFTER:: Q0: %d, Q1: %d, Q2: %d\n", queue0.size, queue1.size, queue2.size);
 		if (p) {
 			// Switch to chosen process.  It is the process's job
 			// to release ptable.lock and then reacquire it
@@ -748,6 +761,7 @@ void aging(void)
     {
       if (p->retime >= ZERO_TO_ONE)
       {
+        // cprintf("Process aged from 0 to 1\n");
         queue_add(&queue1, p);
         queue_remove(&queue0, p);
         p->priority++;
@@ -756,6 +770,7 @@ void aging(void)
     {
       if (p->retime >= ONE_TO_TWO)
       {
+        // cprintf("Process aged from 1 to 2\n");
         queue_add(&queue2, p);
         queue_remove(&queue1, p);
         p->priority++;
