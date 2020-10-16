@@ -706,3 +706,27 @@ int wait2(int *retime, int *rutime, int *stime) {
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+void update_stats(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state == SLEEPING)
+    {
+      p->stime++;
+    }
+    else if (p->state == RUNNABLE)
+    {
+      p->rutime++;
+    }
+    else if (p->state == RUNNING)
+    {
+      p->retime++;
+    }
+  }
+
+  release(&ptable.lock);
+}
