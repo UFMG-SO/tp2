@@ -16,13 +16,14 @@ struct Queue
 	struct proc* array[NPROC];
 };
 
-struct Queue create_queue()
+void create_queue(struct Queue *q)
 {
-	struct Queue queue;
-	queue.front = queue.size = 0;
-
-	queue.rear = NPROC - 1;
-	return queue;
+  q->size = 0;
+  int i;
+  for (i = 0; i < NPROC; i++)
+  {
+    q->array[i] = 0;  
+  }
 }
 
 int is_full(struct Queue *queue)
@@ -38,79 +39,46 @@ int queue_is_empty(struct Queue *queue)
 void queue_add(struct Queue *queue, struct proc* item)
 {
 	if (is_full(queue))
+  {
 		return;
-	queue->rear = (queue->rear + 1) % NPROC;
-	queue->array[queue->rear] = item;
-	queue->size = queue->size + 1;
+  }
+  int index = queue->size;
+  queue->array[index] = item;
+  queue->size++;
 }
 
 void queue_remove(struct Queue *queue, struct proc* item) {
 	if (queue_is_empty(queue)) {
 		return;
 	}
-	struct Queue new_queue = create_queue();
-	int i;
-	for (i = queue->front; i < queue->size; i++) {
-		if (queue->array[i]) {
-			if (queue->array[i]->pid != item->pid) {
-				queue_add(&new_queue,queue->array[i]);
-			}
-		}
+	int i = 0;
+  int found = 0;
+	while (i < queue->size)
+  {
+    if (queue->array[i] && queue->array[i]->pid != item->pid) {
+      found = 1;
+      break;
+    }
 	}
-	*queue = new_queue;
-}
 
-struct proc* dequeue(struct Queue *queue)
-{
-	if (queue_is_empty(queue))
-		return 0;
-	struct proc* item = queue->array[queue->front];
-	queue->front = (queue->front + 1) % NPROC;
-	queue->size = queue->size - 1;
-	return item;
-}
-
-struct proc* front(struct Queue *queue)
-{
-	if (queue_is_empty(queue))
-		return 0;
-	return queue->array[queue->front];
-}
-
-struct proc* rear(struct Queue *queue)
-{
-	if (queue_is_empty(queue))
-		return 0;
-	return queue->array[queue->rear];
+  if (found) {
+    while (i < queue->size - 1) {
+      queue->array[i] = queue->array[i + 1];
+      i++;
+    }
+    queue->array[queue->size - 1] = 0;
+    queue->size--;
+  }
 }
 
 struct proc* get_first_element(struct Queue *queue) {
 	int i;
-	for (i = queue->front; i < queue->size; i++) {
-		if (queue->array[i]) {
-			if (queue->array[i]->state == RUNNABLE) {
-				return queue->array[i];
-			}
-		}
+	for (i = 0; i < NPROC; i++) {
+    if (queue->array[i] && queue->array[i]->state == RUNNABLE) {
+      return queue->array[i];
+    }
 	}
 	return 0;
-}
-
-void move_end(struct Queue* queue, struct proc* item) {
-	struct Queue new_queue = create_queue();
-	if (queue->size == 1) {
-		return;
-	}
-	int i;
-	for (i = queue->front; i < queue->size; i++) {
-		if (queue->array[i]) {
-			if (queue->array[i]->pid != item->pid && queue->array[i]->state == RUNNABLE) {
-				queue_add(&new_queue,queue->array[i]);
-			}
-		}
-	}
-	queue_add(&new_queue, item);
-	*queue = new_queue;
 }
 
 void print_queue(struct Queue *queue) {
@@ -130,9 +98,9 @@ struct Queue queue1;
 struct Queue queue2;
 
 void init_queues(void) {
-	queue0 = create_queue();
-	queue1 = create_queue();
-	queue2 = create_queue();
+	create_queue(&queue0);
+	create_queue(&queue1);
+	create_queue(&queue2);
 }
 
 struct {
@@ -462,19 +430,16 @@ void scheduler(void)
 		// Tenta encontrar um processo olhando nas filas 2 -> 1 -> 0
 		if (!queue_is_empty(&queue2)) {
 			p = get_first_element(&queue2);
-			move_end(&queue2, p);
 		} else {
 			if (!queue_is_empty(&queue1)) {
 				p = get_first_element(&queue1);
-				move_end(&queue1, p);
 			} else {
 				if (!queue_is_empty(&queue0)) {
 					p = get_first_element(&queue0);
-					move_end(&queue0, p);
 				}
 			}
 		}
-		if (p != 0) {
+		if (p) {
 			// Switch to chosen process.  It is the process's job
 			// to release ptable.lock and then reacquire it
 			// before jumping back to us.
@@ -683,19 +648,19 @@ int set_prio(int prio) {
   release(&ptable.lock);
 
   if (prio == 2) {
-	queue_add(&queue2, myproc());
+	  queue_add(&queue2, myproc());
   } else if (prio == 1) {
-	queue_add(&queue1, myproc());
+	  queue_add(&queue1, myproc());
   } else {
-	queue_add(&queue0, myproc());
+	  queue_add(&queue0, myproc());
   }
 
   if (old_priority == 2) {
-	queue_remove(&queue2, myproc());
+	  queue_remove(&queue2, myproc());
   } else if (old_priority == 1) {
-	queue_remove(&queue1, myproc());
+	  queue_remove(&queue1, myproc());
   } else {
-	queue_remove(&queue0, myproc());
+	  queue_remove(&queue0, myproc());
   }
 
   return 0;
