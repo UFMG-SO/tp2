@@ -65,7 +65,7 @@ void queue_remove(struct Queue *queue, struct proc* item) {
 	while (i < NPROC)
   {
     if (queue->array[i] && queue->array[i]->pid == item->pid) {
-      cprintf("%p was found\n", item);
+      // cprintf("%p was found\n", item);
       found = 1;
       break;
     }
@@ -459,7 +459,23 @@ void scheduler(void)
     }
     // cprintf("AFTER:: Q0: %d, Q1: %d, Q2: %d\n", queue0.size, queue1.size, queue2.size);
 		if (p) {
-			// Switch to chosen process.  It is the process's job
+
+      // Move chosen process to the end of its priority queue.
+      if (p->priority == 0)
+      {
+        queue_remove(&queue0, p);
+        queue_add(&queue0, p);
+      } else if (p->priority == 1)
+      {
+        queue_remove(&queue1, p);
+        queue_add(&queue1, p);
+      } else 
+      {
+        queue_remove(&queue2, p);
+        queue_add(&queue2, p);
+      }
+
+      // Switch to chosen process.  It is the process's job
 			// to release ptable.lock and then reacquire it
 			// before jumping back to us.
 			c->proc = p;
