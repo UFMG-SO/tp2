@@ -35,6 +35,17 @@ int queue_is_empty(struct Queue *queue)
 	return (queue->size == 0);
 }
 
+void print_queue(struct Queue *queue) {
+	int i = 0;
+	for (i = queue->front; i < queue->size; i++) {
+		if (queue->array[i]) {
+			cprintf("%d ",queue->array[i]->pid);
+		}
+	}
+	cprintf("\n");
+}
+
+
 void queue_add(struct Queue *queue, struct proc* item)
 {
 	if (is_full(queue))
@@ -44,30 +55,23 @@ void queue_add(struct Queue *queue, struct proc* item)
 	queue->size = queue->size + 1;
 }
 
-void queue_remove(struct Queue *queue, struct proc* item) {
-	if (queue_is_empty(queue)) {
-		return;
+struct Queue queue_remove(struct Queue *queue, struct proc* item) {
+	if (queue_is_empty(queue) || !queue || !item) {
+		return *queue;
 	}
 	struct Queue new_queue = create_queue();
 	int i;
-	for (i = queue->front; i < queue->size; i++) {
+	for (i = queue->front; i < queue->rear; i++) {
 		if (queue->array[i]) {
 			if (queue->array[i]->pid != item->pid) {
-				queue_add(&new_queue,queue->array[i]);
+				queue_add(&new_queue, queue->array[i]);
 			}
 		}
 	}
-	*queue = new_queue;
-}
-
-struct proc* dequeue(struct Queue *queue)
-{
-	if (queue_is_empty(queue))
-		return 0;
-	struct proc* item = queue->array[queue->front];
-	queue->front = (queue->front + 1) % NPROC;
-	queue->size = queue->size - 1;
-	return item;
+	return new_queue;
+	// cprintf("");
+	// print_queue(&new_queue);
+	// queue = &new_queue;
 }
 
 struct proc* front(struct Queue *queue)
@@ -97,30 +101,14 @@ struct proc* get_first_element(struct Queue *queue) {
 }
 
 void move_end(struct Queue* queue, struct proc* item) {
-	struct Queue new_queue = create_queue();
-	if (queue->size == 1) {
-		return;
+	if (item && queue) {
+		// cprintf("ANT REM ");
+		// print_queue(queue);
+		*queue = queue_remove(queue, item);
+		// cprintf("DPS REM ");
+		// print_queue(queue);
+		queue_add(queue, item);
 	}
-	int i;
-	for (i = queue->front; i < queue->size; i++) {
-		if (queue->array[i]) {
-			if (queue->array[i]->pid != item->pid && queue->array[i]->state == RUNNABLE) {
-				queue_add(&new_queue,queue->array[i]);
-			}
-		}
-	}
-	queue_add(&new_queue, item);
-	*queue = new_queue;
-}
-
-void print_queue(struct Queue *queue) {
-	int i = 0;
-	for (i = queue->front; i < queue->size; i++) {
-		if (queue->array[i]) {
-			cprintf("%d ",queue->array[i]->pid);
-		}
-	}
-	cprintf("\n");
 }
 //
 
@@ -466,11 +454,11 @@ void scheduler(void)
 		} else {
 			if (!queue_is_empty(&queue1)) {
 				p = get_first_element(&queue1);
-				move_end(&queue1, p);
+				// move_end(&queue1, p);
 			} else {
 				if (!queue_is_empty(&queue0)) {
 					p = get_first_element(&queue0);
-					move_end(&queue0, p);
+					// move_end(&queue0, p);
 				}
 			}
 		}
@@ -691,11 +679,11 @@ int set_prio(int prio) {
   }
 
   if (old_priority == 2) {
-	queue_remove(&queue2, myproc());
+	queue2 = queue_remove(&queue2, myproc());
   } else if (old_priority == 1) {
-	queue_remove(&queue1, myproc());
+	queue1 = queue_remove(&queue1, myproc());
   } else {
-	queue_remove(&queue0, myproc());
+	queue0 = queue_remove(&queue0, myproc());
   }
 
   return 0;
