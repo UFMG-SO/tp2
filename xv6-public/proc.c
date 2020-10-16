@@ -8,6 +8,8 @@
 #include "spinlock.h"
 
 #define STARTING_PRIORITY 2
+#define ZERO_TO_ONE 20
+#define ONE_TO_TWO 20
 
 // Implementação da fila
 struct Queue
@@ -38,6 +40,7 @@ int queue_is_empty(struct Queue *queue)
 
 void queue_add(struct Queue *queue, struct proc* item)
 {
+  cprintf("queue add\n");
 	if (is_full(queue))
   {
 		return;
@@ -45,10 +48,12 @@ void queue_add(struct Queue *queue, struct proc* item)
   int index = queue->size;
   queue->array[index] = item;
   queue->size++;
+  cprintf("queue add end\n");
 }
 
 void queue_remove(struct Queue *queue, struct proc* item) {
 	if (queue_is_empty(queue)) {
+    cprintf("queue empty\n");
 		return;
 	}
 	int i = 0;
@@ -64,6 +69,7 @@ void queue_remove(struct Queue *queue, struct proc* item) {
   if (found) {
     while (i < queue->size - 1) {
       queue->array[i] = queue->array[i + 1];
+
       i++;
     }
     queue->array[queue->size - 1] = 0;
@@ -725,6 +731,35 @@ void update_stats(void)
     else if (p->state == RUNNING)
     {
       p->retime++;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
+void aging(void)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->priority == 0)
+    {
+      if (p->retime >= ZERO_TO_ONE)
+      {
+        queue_add(&queue1, p);
+        queue_remove(&queue0, p);
+        p->priority++;
+      }
+    } else if (p->priority == 1)
+    {
+      if (p->retime >= ONE_TO_TWO)
+      {
+        queue_add(&queue2, p);
+        queue_remove(&queue1, p);
+        p->priority++;
+      }
     }
   }
 

@@ -52,6 +52,7 @@ trap(struct trapframe *tf)
       acquire(&tickslock);
       ticks++;
       update_stats();
+      aging();
       wakeup(&ticks);
       release(&tickslock);
     }
