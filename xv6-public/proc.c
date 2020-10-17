@@ -404,6 +404,13 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+
+        // Reset stats.
+        p->ctime = 0;
+        p->retime = 0;
+        p->rutime = 0;
+        p->stime = 0;
+
         release(&ptable.lock);
         return pid;
       }
@@ -727,6 +734,13 @@ int wait2(int *retime, int *rutime, int *stime) {
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+
+        // Reset stats.
+        p->ctime = 0;
+        p->retime = 0;
+        p->rutime = 0;
+        p->stime = 0;
+        
         release(&ptable.lock);
         return pid;
       }
