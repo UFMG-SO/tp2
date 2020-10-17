@@ -90,7 +90,8 @@ sys_uptime(void)
   return xticks;
 }
 
-int sys_set_prio(void) {
+int sys_set_prio(void)
+{
   int prio;
   if (argint(0, &prio) < 0) {
     return -1;
@@ -98,7 +99,8 @@ int sys_set_prio(void) {
   return set_prio(prio);
 }
 
-int sys_wait2(void) {
+int sys_wait2(void)
+{
   int *retime;
   int *rutime;
   int *stime;
@@ -114,4 +116,10 @@ int sys_wait2(void) {
   }
 
   return wait2(retime, rutime, stime);
+}
+
+int sys_yield(void)
+{
+  yield();
+  return 0;
 }

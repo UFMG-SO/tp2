@@ -810,3 +810,9 @@ void aging(void)
 
   release(&ptable.lock);
 }
+
+int user_yield(void)
+{
+  yield();
+  return 0;
+}

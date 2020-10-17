@@ -28,7 +28,7 @@ void simulateShortCPUBursts()
             asm("nop");
             if (j % 10000 == 0)
             {
-                // yield.
+                user_yield();
             }
         }
     }
