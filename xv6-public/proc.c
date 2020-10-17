@@ -769,11 +769,11 @@ void update_stats(void)
     }
     else if (p->state == RUNNABLE)
     {
-      p->rutime++;
+      p->retime++;
     }
     else if (p->state == RUNNING)
     {
-      p->retime++;
+      p->rutime++;
     }
   }
 
