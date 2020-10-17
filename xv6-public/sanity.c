@@ -42,7 +42,24 @@ void simulateIOBoundProcess() {
     }
 }
 
-void usage() {
+char* get_type(int i)
+{
+    if (i == 0)
+    {
+        return "CPU-Bound";
+    }
+    else if (i == 1)
+    {
+        return "S-Bound";
+    }
+    else
+    {
+        return "IO-Bound";
+    }
+}
+
+void usage()
+{
     printf(1, "Usage: sanity <n>, where n is an integer >= 0.\n");
 }
 
@@ -55,7 +72,7 @@ int main(int argc, char* argv[])
     }
 
     int n = atoi(argv[1]);
-    if (n < 0) {
+    if (n <= 0) {
         usage();
         exit();
     }
@@ -106,8 +123,9 @@ int main(int argc, char* argv[])
     {
         int retime, rutime, stime;
         int pid_child = wait2(&retime, &rutime, &stime);
-        printf(1, "Child with pid %d died. RETIME=%d, RUTIME=%d, STIME=%d\n", pid_child, retime, rutime, stime);
         int pid_child_mod_three = pid_child % 3;
+        char *type=get_type(pid_child_mod_three);
+        printf(1, "Pid %d died. Type=%s, RETIME=%d, RUTIME=%d, STIME=%d\n", pid_child, type, retime, rutime, stime);
 
         ready_time[pid_child_mod_three] += retime;
         sleeping_time[pid_child_mod_three] += stime;
